@@ -11,7 +11,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Pobieramy dane z zewnętrznego serwera
-  const { firefighters, beacons, alerts, connected, sendCommand } = useSimulationData();
+  const { firefighters, beacons, alerts, connected, sendCommand, resolveAlert } = useSimulationData();
 
   // Oblicz liczbę strażaków na piętrach
   const floorCounts = new Map<number, number>();
@@ -21,13 +21,16 @@ export default function App() {
   });
 
   const onAcknowledgeAlert = (alertId: string) => {
-    // Tutaj możesz poprosić o nazwę użytkownika, który potwierdza alert
-    const acknowledgedBy = "CLI-User"; // Można dodać input, aby to było dynamiczne
+    // 1. Wyślij potwierdzenie do serwera (opcjonalne, ale dobre dla logów)
+    const acknowledgedBy = "CLI-User"; 
     sendCommand({
       command: "acknowledge_alert",
       alert_id: alertId,
       acknowledged_by: acknowledgedBy
     });
+
+    // 2. Usuń alert z widoku (oznacz jako rozwiązany lokalnie)
+    resolveAlert(alertId);
   };
 
   return (

@@ -115,6 +115,12 @@ export function useSimulationData() {
     }
   };
 
+  const resolveAlert = useCallback((alertId: string) => {
+    setAlerts(prev => prev.map(a => 
+      a.id === alertId ? { ...a, resolved: true } : a
+    ));
+  }, []);
+
   useEffect(() => {
     connect();
     return () => {
@@ -129,6 +135,7 @@ export function useSimulationData() {
     beacons: Array.from(beacons.values()),
     alerts,
     building,
-    sendCommand, // Dodaj sendCommand do zwracanych wartości
+    sendCommand,
+    resolveAlert, // Eksportujemy nową funkcję
   };
 }
