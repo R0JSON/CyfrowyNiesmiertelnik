@@ -1,0 +1,7 @@
+services:
+  frontend:
+    build: .
+    ports:
+      - "3000:80"
+    container_name: digital-dogtag-ui
+    restart: always
