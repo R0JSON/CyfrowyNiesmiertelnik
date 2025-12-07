@@ -184,10 +184,10 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
                   center={pos} 
                   radius={b.range_m || 15} 
                   pathOptions={{ 
+                    stroke: false, // Wyłączamy obrys
                     color: b.type === 'entry' ? '#58a6ff' : '#3fb950', 
                     fillOpacity: 0.05, 
-                    dashArray: '4, 4', 
-                    weight: 1 
+                    fillColor: b.type === 'entry' ? '#58a6ff' : '#3fb950',
                   }} 
                />
              )}
@@ -215,26 +215,6 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
 
         return (
           <>
-            {/* Linie triangulacji (tylko dla zaznaczonego) */}
-            {selectedFirefighterId === t.firefighter.id && t.uwb_measurements && (
-               t.uwb_measurements.map((m: any, idx: number) => {
-                 const beacon = beacons.find(b => b.id === m.beacon_id);
-                 // Jeśli zaznaczony, pokaż linie do beaconów niezależnie od piętra (skoro widzimy strażaka)
-                 // Ale beacony są fizycznie na konkretnym piętrze. Triangulacja zazwyczaj działa w obrębie piętra lub +/- 1.
-                 // Pokażmy linię, jeśli beacon istnieje.
-                 if (!beacon) return null;
-
-                 const bPos = metersToLatLng(beacon.position.x, beacon.position.y);
-                 return (
-                   <Polyline 
-                     key={idx} 
-                     positions={[pos, bPos]} 
-                     pathOptions={{ color: '#3fb950', weight: 1, opacity: 0.6, dashArray: m.los ? undefined : '4, 4' }} 
-                   />
-                 )
-               })
-            )}
-
             <Marker 
               position={pos} 
               icon={createFirefighterIcon(initials, rotation, selectedFirefighterId === t.firefighter.id)}
