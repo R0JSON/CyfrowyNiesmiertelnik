@@ -99,7 +99,7 @@ export default function App() {
             </header>
 
             {/* Tabs */}
-            <div className="p-4 grid grid-cols-3 gap-1 bg-muted/50 min-w-[380px]">
+            <div className="p-4 grid grid-cols-2 gap-1 bg-muted/50 min-w-[380px]">
               <button 
                 onClick={() => setSelectedTab('firefighters')}
                 className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'firefighters' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
@@ -111,12 +111,6 @@ export default function App() {
                 className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'beacons' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
               >
                 <Radio className="w-4 h-4" /> Beacony
-              </button>
-              <button 
-                onClick={() => setSelectedTab('alerts')}
-                className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all relative ${selectedTab === 'alerts' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
-              >
-                <AlertTriangle className="w-4 h-4" /> Historia
               </button>
             </div>
 

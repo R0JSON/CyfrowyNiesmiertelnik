@@ -143,7 +143,8 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
   return (
     <MapContainer 
       center={[CENTER_LAT, CENTER_LNG]} 
-      zoom={19} 
+      zoom={19}
+      maxZoom={22} /* Zwiększamy maksymalny zoom */
       style={{ width: '100%', height: '100%', background: '#0d1117' }}
       zoomControl={false}
     >
