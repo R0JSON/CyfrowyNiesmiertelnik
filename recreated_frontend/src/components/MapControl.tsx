@@ -22,6 +22,8 @@ interface Props {
   floor: number;
   selectedFirefighterId: string | null;
   isSidebarOpen: boolean;
+  showBeaconRanges: boolean;
+  showTriangulationLines: boolean;
 }
 
 // Komponent pomocniczy do odświeżania rozmiaru mapy
@@ -122,7 +124,7 @@ const createBeaconIcon = (type: string, status: string) => {
   });
 };
 
-export function MapControl({ firefighters, beacons, floor, selectedFirefighterId, isSidebarOpen }: Props) {
+export function MapControl({ firefighters, beacons, floor, selectedFirefighterId, isSidebarOpen, showBeaconRanges, showTriangulationLines }: Props) {
   return (
     <MapContainer 
       center={[CENTER_LAT, CENTER_LNG]} 
@@ -146,16 +148,18 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
         return (
           <>
              {/* Zasięg beacona */}
-             <Circle 
-                center={pos} 
-                radius={b.range_m || 15} 
-                pathOptions={{ 
-                  color: b.type === 'entry' ? '#58a6ff' : '#3fb950', 
-                  fillOpacity: 0.05, 
-                  dashArray: '4, 4', 
-                  weight: 1 
-                }} 
-             />
+             {showBeaconRanges && (
+               <Circle 
+                  center={pos} 
+                  radius={b.range_m || 15} 
+                  pathOptions={{ 
+                    color: b.type === 'entry' ? '#58a6ff' : '#3fb950', 
+                    fillOpacity: 0.05, 
+                    dashArray: '4, 4', 
+                    weight: 1 
+                  }} 
+               />
+             )}
              {/* Marker beacona */}
              <Marker position={pos} icon={createBeaconIcon(b.type, b.status)}>
                <Tooltip direction="top" offset={[0, -14]} className="custom-tooltip">
@@ -178,7 +182,7 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
         return (
           <>
             {/* Linie triangulacji (tylko dla zaznaczonego) */}
-            {selectedFirefighterId === t.firefighter.id && t.uwb_measurements && (
+            {showTriangulationLines && selectedFirefighterId === t.firefighter.id && t.uwb_measurements && (
                t.uwb_measurements.map((m: any, idx: number) => {
                  const beacon = beacons.find(b => b.id === m.beacon_id);
                  if (!beacon || beacon.floor !== floor) return null;

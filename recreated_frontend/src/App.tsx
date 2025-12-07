@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { MapControl } from './components/MapControl';
-import { Users, Radio, AlertTriangle, Layers, Menu, ChevronLeft } from 'lucide-react';
+import { Users, Radio, AlertTriangle, Menu, ChevronLeft } from 'lucide-react';
 import { useSimulationData } from './hooks/useSimulationData';
 
 export default function App() {
@@ -9,6 +9,8 @@ export default function App() {
   const [selectedFloor, setSelectedFloor] = useState(0);
   const [selectedFirefighterId, setSelectedFirefighterId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showBeaconRanges, setShowBeaconRanges] = useState(true);
+  const [showTriangulationLines, setShowTriangulationLines] = useState(true);
 
   // Pobieramy dane z zewnętrznego serwera
   const { firefighters, beacons, alerts, connected, sendCommand, resolveAlert } = useSimulationData();
@@ -120,10 +122,11 @@ export default function App() {
                </button>
              )}
 
-             <div className="bg-[#0d1117]/90 backdrop-blur border border-border rounded-lg p-2 flex gap-1 shadow-xl">
-                <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1">
+             {/* Kontrolki pięter - zawsze scentrowane w swoim kontenerze */}
+             <div className="bg-[#0d1117]/90 backdrop-blur border border-border rounded-lg p-2 flex gap-1 shadow-xl items-center">
+                {/* Usunięto: <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1">
                   <Layers className="w-3 h-3"/> Piętro:
-                </span>
+                </span> */}
                 {[-1, 0, 1, 2].map(floor => (
                   <button
                     key={floor}
@@ -146,12 +149,26 @@ export default function App() {
              </div>
            </div>
 
-           <div className="bg-[#0d1117]/90 backdrop-blur border border-border rounded-lg p-3 pointer-events-auto shadow-xl">
+           <div className="bg-[#0d1117]/90 backdrop-blur border border-border rounded-lg p-3 pointer-events-auto shadow-xl min-w-[200px]">
              <div className="text-xs font-semibold mb-2">Wizualizacja UWB</div>
+             
+             <div className="flex items-center justify-between gap-4 text-xs mb-2">
+               <span className="text-muted-foreground cursor-pointer" onClick={() => setShowBeaconRanges(!showBeaconRanges)}>Zasięgi beaconów</span>
+               <div 
+                 className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${showBeaconRanges ? 'bg-psp-success' : 'bg-muted'}`}
+                 onClick={() => setShowBeaconRanges(!showBeaconRanges)}
+               >
+                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all ${showBeaconRanges ? 'left-[18px]' : 'left-0.5'}`}></div>
+               </div>
+             </div>
+
              <div className="flex items-center justify-between gap-4 text-xs">
-               <span className="text-muted-foreground">Zasięgi beaconów</span>
-               <div className="w-8 h-4 bg-psp-success rounded-full relative cursor-pointer">
-                 <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow"></div>
+               <span className="text-muted-foreground cursor-pointer" onClick={() => setShowTriangulationLines(!showTriangulationLines)}>Linie triangulacji</span>
+               <div 
+                 className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${showTriangulationLines ? 'bg-psp-success' : 'bg-muted'}`}
+                 onClick={() => setShowTriangulationLines(!showTriangulationLines)}
+               >
+                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all ${showTriangulationLines ? 'left-[18px]' : 'left-0.5'}`}></div>
                </div>
              </div>
            </div>
@@ -165,6 +182,8 @@ export default function App() {
             floor={selectedFloor}
             selectedFirefighterId={selectedFirefighterId}
             isSidebarOpen={isSidebarOpen}
+            showBeaconRanges={showBeaconRanges}
+            showTriangulationLines={showTriangulationLines}
           />
         </div>
       </main>
