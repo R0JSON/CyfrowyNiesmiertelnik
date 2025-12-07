@@ -98,14 +98,18 @@ export function Sidebar({ tab, firefighters, beacons, alerts, onSelectFirefighte
                   </div>
                 </div>
                 
-                {scba && (
+                {scba ? (
                   <div className="mt-2 grid grid-cols-2 gap-2">
                      <div className="bg-muted/30 p-1.5 rounded flex items-center justify-center gap-2 text-xs font-medium text-psp-info">
-                       <Gauge className="w-3 h-3" /> {Math.round(scba.cylinder_pressure_bar)} bar
+                       <Gauge className="w-3 h-3" /> {scba.cylinder_pressure_bar !== undefined ? Math.round(scba.cylinder_pressure_bar) : '-'} bar
                      </div>
                      <div className={`bg-muted/30 p-1.5 rounded flex items-center justify-center gap-2 text-xs font-medium ${scba.remaining_time_min < 15 ? 'text-psp-critical' : 'text-psp-success'}`}>
-                       {scba.remaining_time_min} min
+                       {scba.remaining_time_min !== undefined ? Math.round(scba.remaining_time_min) : '-'} min
                      </div>
+                  </div>
+                ) : (
+                  <div className="mt-2 p-1.5 text-center text-[10px] text-muted-foreground bg-muted/10 rounded">
+                    Brak danych SCBA
                   </div>
                 )}
               </div>
