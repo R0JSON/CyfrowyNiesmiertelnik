@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip, Polyline, Circle } from 'react-leaflet';
+import React, { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Tooltip, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 // Ustawienie współrzędnych "Centrum" (Przykładowo Warszawa, żeby pasowało do OSM)
@@ -20,7 +20,24 @@ interface Props {
   beacons: any[];
   floor: number;
   selectedFirefighterId: string | null;
+  isSidebarOpen: boolean;
 }
+
+// Komponent pomocniczy do odświeżania rozmiaru mapy
+const MapResizer = ({ isSidebarOpen }: { isSidebarOpen: boolean }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    // Czekamy na koniec animacji CSS (300ms)
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [isSidebarOpen, map]);
+
+  return null;
+};
 
 // Tworzenie customowej ikony dla strażaka (HTML/CSS DivIcon)
 const createFirefighterIcon = (initials: string, rotation: number, isSelected: boolean) => {
@@ -104,7 +121,7 @@ const createBeaconIcon = (type: string, status: string) => {
   });
 };
 
-export function MapControl({ firefighters, beacons, floor, selectedFirefighterId }: Props) {
+export function MapControl({ firefighters, beacons, floor, selectedFirefighterId, isSidebarOpen }: Props) {
   return (
     <MapContainer 
       center={[CENTER_LAT, CENTER_LNG]} 
@@ -112,6 +129,8 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
       style={{ width: '100%', height: '100%', background: '#0d1117' }}
       zoomControl={false}
     >
+      <MapResizer isSidebarOpen={isSidebarOpen} />
+      
       {/* Monochromatyczna mapa OSM (wymóg z promptu) */}
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

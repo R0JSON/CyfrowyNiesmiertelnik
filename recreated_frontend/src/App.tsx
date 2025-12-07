@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { MapControl } from './components/MapControl';
-import { Users, Radio, AlertTriangle, Layers } from 'lucide-react';
+import { Users, Radio, AlertTriangle, Layers, Menu, ChevronLeft } from 'lucide-react';
 
 // Mock Data (żeby to nie była pusta wydmuszka)
 const MOCK_FIREFIGHTERS = [
@@ -21,6 +21,7 @@ export default function App() {
   const [selectedTab, setSelectedTab] = useState<'firefighters' | 'beacons' | 'alerts'>('firefighters');
   const [selectedFloor, setSelectedFloor] = useState(0);
   const [selectedFirefighterId, setSelectedFirefighterId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Oblicz liczbę strażaków na piętrach
   const floorCounts = new Map<number, number>();
@@ -31,16 +32,22 @@ export default function App() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground font-sans">
       {/* SIDEBAR */}
-      <aside className="w-[380px] flex-shrink-0 bg-[#0d1117] border-r border-border flex flex-col overflow-hidden">
+      <aside 
+        className={`flex-shrink-0 bg-[#0d1117] border-r border-border flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-[380px]' : 'w-0 border-r-0'}`}
+      >
         {/* Header */}
-        <header className="p-4 bg-muted/30 border-b border-border">
+        <header className="p-4 bg-muted/30 border-b border-border min-w-[380px]">
           <div className="flex items-center justify-between gap-2">
             <h1 className="text-lg font-semibold flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-psp-critical" />
               Cyfrowy Nieśmiertelnik PSP
             </h1>
-            <button className="text-xs px-3 py-1 rounded border border-border hover:bg-muted transition-colors">
-              API Docs
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1 rounded border border-border hover:bg-muted transition-colors"
+              title="Zwiń panel"
+            >
+              <ChevronLeft className="w-4 h-4" />
             </button>
           </div>
           <div className="mt-2 text-xs flex items-center gap-2 text-psp-success bg-psp-success/10 p-1.5 rounded">
@@ -50,7 +57,7 @@ export default function App() {
         </header>
 
         {/* Tabs */}
-        <div className="p-4 grid grid-cols-3 gap-1 bg-muted/50">
+        <div className="p-4 grid grid-cols-3 gap-1 bg-muted/50 min-w-[380px]">
           <button 
             onClick={() => setSelectedTab('firefighters')}
             className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'firefighters' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
@@ -72,7 +79,7 @@ export default function App() {
         </div>
 
         {/* Content List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-w-[380px]">
           <Sidebar 
             tab={selectedTab} 
             firefighters={MOCK_FIREFIGHTERS} 
@@ -87,29 +94,42 @@ export default function App() {
       <main className="flex-1 flex flex-col overflow-hidden relative">
         {/* Top Bar */}
         <header className="absolute top-4 left-4 right-4 z-[1000] flex justify-between pointer-events-none">
-           <div className="bg-[#0d1117]/90 backdrop-blur border border-border rounded-lg p-2 flex gap-1 pointer-events-auto shadow-xl">
-              <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1">
-                <Layers className="w-3 h-3"/> Piętro:
-              </span>
-              {[-1, 0, 1, 2].map(floor => (
-                <button
-                  key={floor}
-                  onClick={() => setSelectedFloor(floor)}
-                  className={`
-                    relative min-w-[40px] h-8 text-sm font-semibold rounded transition-colors
-                    ${selectedFloor === floor 
-                      ? 'bg-psp-critical text-white' 
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'}
-                  `}
-                >
-                  {floor === -1 ? 'P' : floor}
-                  {(floorCounts.get(floor) || 0) > 0 && (
-                    <span className={`absolute -top-1 -right-1 w-4 h-4 text-[10px] rounded-full flex items-center justify-center ${selectedFloor === floor ? 'bg-white text-psp-critical' : 'bg-psp-critical text-white'}`}>
-                      {floorCounts.get(floor)}
-                    </span>
-                  )}
-                </button>
-              ))}
+           <div className="flex gap-2 pointer-events-auto">
+             {/* Toggle Button (visible when sidebar closed) */}
+             {!isSidebarOpen && (
+               <button 
+                 onClick={() => setIsSidebarOpen(true)}
+                 className="bg-[#0d1117]/90 backdrop-blur border border-border rounded-lg p-2 text-foreground hover:bg-muted/50 shadow-xl h-full flex items-center"
+                 title="Rozwiń panel"
+               >
+                 <Menu className="w-5 h-5" />
+               </button>
+             )}
+
+             <div className="bg-[#0d1117]/90 backdrop-blur border border-border rounded-lg p-2 flex gap-1 shadow-xl">
+                <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1">
+                  <Layers className="w-3 h-3"/> Piętro:
+                </span>
+                {[-1, 0, 1, 2].map(floor => (
+                  <button
+                    key={floor}
+                    onClick={() => setSelectedFloor(floor)}
+                    className={`
+                      relative min-w-[40px] h-8 text-sm font-semibold rounded transition-colors
+                      ${selectedFloor === floor 
+                        ? 'bg-psp-critical text-white' 
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'}
+                    `}
+                  >
+                    {floor === -1 ? 'P' : floor}
+                    {(floorCounts.get(floor) || 0) > 0 && (
+                      <span className={`absolute -top-1 -right-1 w-4 h-4 text-[10px] rounded-full flex items-center justify-center ${selectedFloor === floor ? 'bg-white text-psp-critical' : 'bg-psp-critical text-white'}`}>
+                        {floorCounts.get(floor)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+             </div>
            </div>
 
            <div className="bg-[#0d1117]/90 backdrop-blur border border-border rounded-lg p-3 pointer-events-auto shadow-xl">
@@ -130,6 +150,7 @@ export default function App() {
             beacons={MOCK_BEACONS} 
             floor={selectedFloor}
             selectedFirefighterId={selectedFirefighterId}
+            isSidebarOpen={isSidebarOpen}
           />
         </div>
       </main>
