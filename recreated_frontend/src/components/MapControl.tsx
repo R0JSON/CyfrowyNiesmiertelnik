@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { Telemetry, Beacon } from '../types';
 
 // Ustawienie współrzędnych "Centrum" (Przykładowo Warszawa, żeby pasowało do OSM)
 const CENTER_LAT = 52.2320;
@@ -16,8 +17,8 @@ const metersToLatLng = (x: number, y: number) => {
 };
 
 interface Props {
-  firefighters: any[];
-  beacons: any[];
+  firefighters: Telemetry[];
+  beacons: Beacon[];
   floor: number;
   selectedFirefighterId: string | null;
   isSidebarOpen: boolean;
@@ -139,16 +140,15 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
       />
 
       {/* Beacony */}
-      {beacons.filter(b => b.floor === floor).map((b, idx) => {
-        // Symulacja pozycji w oparciu o index
-        const pos = metersToLatLng((idx * 15) - 20, (idx * 10) - 10);
+      {beacons.filter(b => b.floor === floor).map((b) => {
+        const pos = metersToLatLng(b.position.x, b.position.y);
         
         return (
-          <React.Fragment key={b.id}>
+          <>
              {/* Zasięg beacona */}
              <Circle 
                 center={pos} 
-                radius={15} 
+                radius={b.range_m || 15} 
                 pathOptions={{ 
                   color: b.type === 'entry' ? '#58a6ff' : '#3fb950', 
                   fillOpacity: 0.05, 
@@ -165,29 +165,30 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
                  </div>
                </Tooltip>
              </Marker>
-          </React.Fragment>
+          </>
         );
       })}
 
       {/* Strażacy */}
-      {firefighters.filter(f => f.floor === floor).map((ff, idx) => {
-        // Symulacja pozycji
-        const offset = idx * 5; 
-        const pos = metersToLatLng(offset, offset * -1);
-        const rotation = (idx * 45) % 360;
-        const initials = ff.name.split(' ').map((n: string) => n[0]).join('');
+      {firefighters.filter(t => t.position.floor === floor).map((t) => {
+        const pos = metersToLatLng(t.position.x, t.position.y);
+        const rotation = t.heading_deg || 0;
+        const initials = t.firefighter.name.split(' ').map((n: string) => n[0]).join('');
 
         return (
-          <React.Fragment key={ff.id}>
+          <>
             {/* Linie triangulacji (tylko dla zaznaczonego) */}
-            {selectedFirefighterId === ff.id && (
-               beacons.filter(b => b.floor === floor).slice(0, 3).map((b, bIdx) => {
-                 const bPos = metersToLatLng((bIdx * 15) - 20, (bIdx * 10) - 10);
+            {selectedFirefighterId === t.firefighter.id && t.uwb_measurements && (
+               t.uwb_measurements.map((m: any, idx: number) => {
+                 const beacon = beacons.find(b => b.id === m.beacon_id);
+                 if (!beacon || beacon.floor !== floor) return null;
+
+                 const bPos = metersToLatLng(beacon.position.x, beacon.position.y);
                  return (
                    <Polyline 
-                     key={b.id} 
+                     key={idx} 
                      positions={[pos, bPos]} 
-                     pathOptions={{ color: '#3fb950', weight: 1, opacity: 0.6 }} 
+                     pathOptions={{ color: '#3fb950', weight: 1, opacity: 0.6, dashArray: m.los ? undefined : '4, 4' }} 
                    />
                  )
                })
@@ -195,21 +196,21 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
 
             <Marker 
               position={pos} 
-              icon={createFirefighterIcon(initials, rotation, selectedFirefighterId === ff.id)}
+              icon={createFirefighterIcon(initials, rotation, selectedFirefighterId === t.firefighter.id)}
             >
               <Tooltip direction="top" offset={[0, -22]} opacity={1}>
                  <div className="text-xs min-w-[140px]">
-                   <strong className="block text-sm mb-1">{ff.name}</strong>
+                   <strong className="block text-sm mb-1">{t.firefighter.name}</strong>
                    <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-300">
-                     <span>Tętno: <span className="text-psp-warning font-bold">{ff.hr}</span></span>
-                     <span>Bat: {ff.battery}%</span>
-                     <span>Ruch: {ff.motion}</span>
-                     <span>Ciśnienie: {ff.pressure}</span>
+                     <span>Tętno: <span className="text-psp-warning font-bold">{t.vitals.heart_rate_bpm}</span></span>
+                     <span>Bat: {t.device.battery_percent}%</span>
+                     <span>Ruch: {t.vitals.motion_state}</span>
+                     <span>Ciśnienie: {t.scba ? Math.round(t.scba.cylinder_pressure_bar) : '-'}</span>
                    </div>
                  </div>
               </Tooltip>
             </Marker>
-          </React.Fragment>
+          </>
         );
       })}
 

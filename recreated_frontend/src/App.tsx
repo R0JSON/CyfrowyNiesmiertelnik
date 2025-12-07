@@ -2,32 +2,33 @@ import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { MapControl } from './components/MapControl';
 import { Users, Radio, AlertTriangle, Layers, Menu, ChevronLeft } from 'lucide-react';
-
-// Mock Data (żeby to nie była pusta wydmuszka)
-const MOCK_FIREFIGHTERS = [
-  { id: 'FF-001', name: 'Marek Kamiński', role: 'Kierowca-operator', floor: 0, hr: 142, motion: 'running', battery: 84, pressure: 240, time: 32 },
-  { id: 'FF-002', name: 'Adam Nowak', role: 'Rota 1', floor: 0, hr: 110, motion: 'walking', battery: 92, pressure: 280, time: 45 },
-  { id: 'FF-003', name: 'Piotr Wiśniewski', role: 'Rota 1', floor: 1, hr: 85, motion: 'stationary', battery: 45, pressure: 180, time: 20 },
-];
-
-const MOCK_BEACONS = [
-  { id: 'B-01', name: 'Wejście Główne', type: 'entry', status: 'active', floor: 0, battery: 100 },
-  { id: 'B-02', name: 'Klatka A P0', type: 'stairs', status: 'active', floor: 0, battery: 98 },
-  { id: 'B-03', name: 'Korytarz Północ', type: 'anchor', status: 'active', floor: 0, battery: 85 },
-  { id: 'B-04', name: 'Klatka A P1', type: 'stairs', status: 'offline', floor: 1, battery: 0 },
-];
+import { useSimulationData } from './hooks/useSimulationData';
 
 export default function App() {
-  const [selectedTab, setSelectedTab] = useState<'firefighters' | 'beacons' | 'alerts'>('firefighters');
+  const [selectedTab, setSelectedTab] = useState<'firefighters' | 'beacons' | 'alerts'>('alerts'); // Zmiana na 'alerts' jako domyślny
   const [selectedFloor, setSelectedFloor] = useState(0);
   const [selectedFirefighterId, setSelectedFirefighterId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  // Pobieramy dane z zewnętrznego serwera
+  const { firefighters, beacons, alerts, connected, sendCommand } = useSimulationData();
+
   // Oblicz liczbę strażaków na piętrach
   const floorCounts = new Map<number, number>();
-  MOCK_FIREFIGHTERS.forEach(f => {
-    floorCounts.set(f.floor, (floorCounts.get(f.floor) || 0) + 1);
+  firefighters.forEach(t => {
+    const floor = t.position.floor;
+    floorCounts.set(floor, (floorCounts.get(floor) || 0) + 1);
   });
+
+  const onAcknowledgeAlert = (alertId: string) => {
+    // Tutaj możesz poprosić o nazwę użytkownika, który potwierdza alert
+    const acknowledgedBy = "CLI-User"; // Można dodać input, aby to było dynamiczne
+    sendCommand({
+      command: "acknowledge_alert",
+      alert_id: alertId,
+      acknowledged_by: acknowledgedBy
+    });
+  };
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground font-sans">
@@ -50,31 +51,39 @@ export default function App() {
               <ChevronLeft className="w-4 h-4" />
             </button>
           </div>
-          <div className="mt-2 text-xs flex items-center gap-2 text-psp-success bg-psp-success/10 p-1.5 rounded">
-            <span className="w-2 h-2 rounded-full bg-psp-success animate-pulse"></span>
-            System Online
+          <div className={`mt-2 text-xs flex items-center gap-2 ${connected ? 'text-psp-success bg-psp-success/10' : 'text-psp-critical bg-psp-critical/10'} p-1.5 rounded`}>
+            <span className={`w-2 h-2 rounded-full ${connected ? 'bg-psp-success animate-pulse' : 'bg-psp-critical'}`}></span>
+            {connected ? 'System Online (niesmiertelnik.replit.app)' : 'Rozłączono'}
           </div>
         </header>
 
         {/* Tabs */}
         <div className="p-4 grid grid-cols-3 gap-1 bg-muted/50 min-w-[380px]">
+          {/* Alerty jako pierwsze */}
+          <button 
+            onClick={() => setSelectedTab('alerts')}
+            className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all relative ${selectedTab === 'alerts' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
+          >
+            <AlertTriangle className="w-4 h-4 text-psp-critical" /> Alerty {/* Kolor czerwony dla ikony */}
+            {alerts.filter(a => !a.resolved).length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 text-[10px] bg-psp-critical text-white rounded-full flex items-center justify-center">
+                {alerts.filter(a => !a.resolved).length}
+              </span>
+            )}
+          </button>
+          {/* Strażacy */}
           <button 
             onClick={() => setSelectedTab('firefighters')}
             className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'firefighters' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
           >
             <Users className="w-4 h-4" /> Strażacy
           </button>
+          {/* Beacony */}
           <button 
             onClick={() => setSelectedTab('beacons')}
             className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'beacons' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
           >
             <Radio className="w-4 h-4" /> Beacony
-          </button>
-          <button 
-            onClick={() => setSelectedTab('alerts')}
-            className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'alerts' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
-          >
-            <AlertTriangle className="w-4 h-4" /> Alerty
           </button>
         </div>
 
@@ -82,10 +91,12 @@ export default function App() {
         <div className="flex-1 overflow-y-auto min-w-[380px]">
           <Sidebar 
             tab={selectedTab} 
-            firefighters={MOCK_FIREFIGHTERS} 
-            beacons={MOCK_BEACONS}
+            firefighters={firefighters} 
+            beacons={beacons}
+            alerts={alerts}
             onSelectFirefighter={setSelectedFirefighterId}
             selectedId={selectedFirefighterId}
+            onAcknowledgeAlert={onAcknowledgeAlert} // Przekazujemy funkcję do potwierdzania alertów
           />
         </div>
       </aside>
@@ -146,8 +157,8 @@ export default function App() {
         {/* Map */}
         <div className="flex-1 bg-[#0d1117]">
           <MapControl 
-            firefighters={MOCK_FIREFIGHTERS} 
-            beacons={MOCK_BEACONS} 
+            firefighters={firefighters} 
+            beacons={beacons} 
             floor={selectedFloor}
             selectedFirefighterId={selectedFirefighterId}
             isSidebarOpen={isSidebarOpen}
