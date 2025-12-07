@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { MapControl } from './components/MapControl';
 import { Users, Radio, AlertTriangle, Menu, ChevronLeft } from 'lucide-react';
@@ -15,6 +15,16 @@ export default function App() {
   // Pobieramy dane z zewnętrznego serwera
   const { firefighters, beacons, alerts, connected, sendCommand, resolveAlert } = useSimulationData();
 
+  const activeAlerts = alerts.filter(a => !a.resolved);
+  const hasActiveAlerts = activeAlerts.length > 0;
+
+  // Automatyczne otwieranie panelu przy nowym alercie
+  useEffect(() => {
+    if (hasActiveAlerts) {
+      setIsSidebarOpen(true);
+    }
+  }, [hasActiveAlerts]);
+
   // Oblicz liczbę strażaków na piętrach
   const floorCounts = new Map<number, number>();
   firefighters.forEach(t => {
@@ -23,15 +33,12 @@ export default function App() {
   });
 
   const onAcknowledgeAlert = (alertId: string) => {
-    // 1. Wyślij potwierdzenie do serwera (opcjonalne, ale dobre dla logów)
     const acknowledgedBy = "CLI-User"; 
     sendCommand({
       command: "acknowledge_alert",
       alert_id: alertId,
       acknowledged_by: acknowledgedBy
     });
-
-    // 2. Usuń alert z widoku (oznacz jako rozwiązany lokalnie)
     resolveAlert(alertId);
   };
 
@@ -41,69 +48,92 @@ export default function App() {
       <aside 
         className={`flex-shrink-0 bg-[#0d1117] border-r border-border flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-[380px]' : 'w-0 border-r-0'}`}
       >
-        {/* Header */}
-        <header className="p-4 bg-muted/30 border-b border-border min-w-[380px]">
-          <div className="flex items-center justify-between gap-2">
-            <h1 className="text-lg font-semibold flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-psp-critical" />
-              Cyfrowy Nieśmiertelnik PSP
-            </h1>
-            <button 
-              onClick={() => setIsSidebarOpen(false)}
-              className="p-1 rounded border border-border hover:bg-muted transition-colors"
-              title="Zwiń panel"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+        {hasActiveAlerts ? (
+          /* TRYB ALARMOWY - Przejmuje panel */
+          <div className="flex flex-col h-full">
+            <header className="p-4 bg-psp-critical text-white border-b border-psp-critical/50 min-w-[380px] animate-pulse">
+              <div className="flex items-center justify-between gap-2">
+                <h1 className="text-lg font-bold flex items-center gap-2 uppercase tracking-wider">
+                  <AlertTriangle className="w-6 h-6 text-white" />
+                  ALARM KRYTYCZNY ({activeAlerts.length})
+                </h1>
+              </div>
+              <div className="mt-2 text-xs opacity-90">
+                Wymagana natychmiastowa reakcja operatora.
+              </div>
+            </header>
+            <div className="flex-1 overflow-y-auto min-w-[380px] bg-psp-critical/5">
+              <Sidebar 
+                tab="alerts" // Wymuszamy widok alertów
+                firefighters={firefighters} 
+                beacons={beacons}
+                alerts={alerts}
+                onSelectFirefighter={setSelectedFirefighterId}
+                selectedId={selectedFirefighterId}
+                onAcknowledgeAlert={onAcknowledgeAlert}
+              />
+            </div>
           </div>
-          <div className={`mt-2 text-xs flex items-center gap-2 ${connected ? 'text-psp-success bg-psp-success/10' : 'text-psp-critical bg-psp-critical/10'} p-1.5 rounded`}>
-            <span className={`w-2 h-2 rounded-full ${connected ? 'bg-psp-success animate-pulse' : 'bg-psp-critical'}`}></span>
-            {connected ? 'System Online (niesmiertelnik.replit.app)' : 'Rozłączono'}
-          </div>
-        </header>
+        ) : (
+          /* TRYB NORMALNY */
+          <>
+            {/* Header */}
+            <header className="p-4 bg-muted/30 border-b border-border min-w-[380px]">
+              <div className="flex items-center justify-between gap-2">
+                <h1 className="text-lg font-semibold flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-psp-critical" />
+                  Cyfrowy Nieśmiertelnik PSP
+                </h1>
+                <button 
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="p-1 rounded border border-border hover:bg-muted transition-colors"
+                  title="Zwiń panel"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </div>
+              <div className={`mt-2 text-xs flex items-center gap-2 ${connected ? 'text-psp-success bg-psp-success/10' : 'text-psp-critical bg-psp-critical/10'} p-1.5 rounded`}>
+                <span className={`w-2 h-2 rounded-full ${connected ? 'bg-psp-success animate-pulse' : 'bg-psp-critical'}`}></span>
+                {connected ? 'System Online (niesmiertelnik.replit.app)' : 'Rozłączono'}
+              </div>
+            </header>
 
-        {/* Tabs */}
-        <div className="p-4 grid grid-cols-3 gap-1 bg-muted/50 min-w-[380px]">
-          {/* Alerty jako pierwsze */}
-          <button 
-            onClick={() => setSelectedTab('alerts')}
-            className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all relative ${selectedTab === 'alerts' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
-          >
-            <AlertTriangle className="w-4 h-4 text-psp-critical" /> Alerty {/* Kolor czerwony dla ikony */}
-            {alerts.filter(a => !a.resolved).length > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 text-[10px] bg-psp-critical text-white rounded-full flex items-center justify-center">
-                {alerts.filter(a => !a.resolved).length}
-              </span>
-            )}
-          </button>
-          {/* Strażacy */}
-          <button 
-            onClick={() => setSelectedTab('firefighters')}
-            className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'firefighters' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
-          >
-            <Users className="w-4 h-4" /> Strażacy
-          </button>
-          {/* Beacony */}
-          <button 
-            onClick={() => setSelectedTab('beacons')}
-            className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'beacons' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
-          >
-            <Radio className="w-4 h-4" /> Beacony
-          </button>
-        </div>
+            {/* Tabs */}
+            <div className="p-4 grid grid-cols-3 gap-1 bg-muted/50 min-w-[380px]">
+              <button 
+                onClick={() => setSelectedTab('firefighters')}
+                className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'firefighters' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
+              >
+                <Users className="w-4 h-4" /> Strażacy
+              </button>
+              <button 
+                onClick={() => setSelectedTab('beacons')}
+                className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all ${selectedTab === 'beacons' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
+              >
+                <Radio className="w-4 h-4" /> Beacony
+              </button>
+              <button 
+                onClick={() => setSelectedTab('alerts')}
+                className={`flex items-center justify-center gap-2 p-2 text-xs font-medium rounded transition-all relative ${selectedTab === 'alerts' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:bg-background/50'}`}
+              >
+                <AlertTriangle className="w-4 h-4" /> Historia
+              </button>
+            </div>
 
-        {/* Content List */}
-        <div className="flex-1 overflow-y-auto min-w-[380px]">
-          <Sidebar 
-            tab={selectedTab} 
-            firefighters={firefighters} 
-            beacons={beacons}
-            alerts={alerts}
-            onSelectFirefighter={setSelectedFirefighterId}
-            selectedId={selectedFirefighterId}
-            onAcknowledgeAlert={onAcknowledgeAlert} // Przekazujemy funkcję do potwierdzania alertów
-          />
-        </div>
+            {/* Content List */}
+            <div className="flex-1 overflow-y-auto min-w-[380px]">
+              <Sidebar 
+                tab={selectedTab} 
+                firefighters={firefighters} 
+                beacons={beacons}
+                alerts={alerts}
+                onSelectFirefighter={setSelectedFirefighterId}
+                selectedId={selectedFirefighterId}
+                onAcknowledgeAlert={onAcknowledgeAlert}
+              />
+            </div>
+          </>
+        )}
       </aside>
 
       {/* MAIN CONTENT */}
