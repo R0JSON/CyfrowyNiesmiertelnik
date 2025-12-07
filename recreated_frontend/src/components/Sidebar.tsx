@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, Battery, Activity, Gauge, User, Radio, AlertTriangle, CheckSquare, Search } from 'lucide-react';
+import { Heart, Battery, Activity, Gauge, User, Radio, AlertTriangle, CheckSquare, Search, Clock } from 'lucide-react'; // Dodaj Clock
 import { Telemetry, Beacon, Alert } from '../types';
 
 interface Props {
@@ -51,7 +51,8 @@ export function Sidebar({ tab, firefighters, beacons, alerts, onSelectFirefighte
             const vitals = t.vitals;
             const scba = t.scba;
             const device = t.device;
-            
+            const lastCommunicationTime = t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '-'; // Dodano
+
             return (
               <div 
                 key={ff.id} 
@@ -112,6 +113,10 @@ export function Sidebar({ tab, firefighters, beacons, alerts, onSelectFirefighte
                     Brak danych SCBA
                   </div>
                 )}
+
+                <div className="mt-2 text-right text-xs text-muted-foreground flex items-center justify-end gap-1">
+                  <Clock className="w-3 h-3" /> {lastCommunicationTime}
+                </div>
               </div>
             );
           })}

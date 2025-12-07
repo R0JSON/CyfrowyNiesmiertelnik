@@ -41,6 +41,7 @@ export interface Device {
 
 export interface Telemetry {
   tag_id: string;
+  timestamp: string; // Dodano pole timestamp
   firefighter: Firefighter;
   position: Position;
   heading_deg?: number;
