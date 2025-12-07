@@ -5,15 +5,15 @@ import { Users, Radio, AlertTriangle, Menu, ChevronLeft } from 'lucide-react';
 import { useSimulationData } from './hooks/useSimulationData';
 
 export default function App() {
-  const [selectedTab, setSelectedTab] = useState<'firefighters' | 'beacons' | 'alerts'>('alerts'); // Zmiana na 'alerts' jako domyślny
+  const [selectedTab, setSelectedTab] = useState<'firefighters' | 'beacons' | 'alerts'>('firefighters');
   const [selectedFloor, setSelectedFloor] = useState(0);
   const [selectedFirefighterId, setSelectedFirefighterId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showBeaconRanges, setShowBeaconRanges] = useState(true);
-  const [showTriangulationLines, setShowTriangulationLines] = useState(true);
+  const [showBeacons, setShowBeacons] = useState(true);
 
   // Pobieramy dane z zewnętrznego serwera
-  const { firefighters, beacons, alerts, connected, sendCommand, resolveAlert } = useSimulationData();
+  const { firefighters, beacons, alerts, connected, sendCommand, resolveAlert, history } = useSimulationData();
 
   const activeAlerts = alerts.filter(a => !a.resolved);
   const hasActiveAlerts = activeAlerts.length > 0;
@@ -154,9 +154,6 @@ export default function App() {
 
              {/* Kontrolki pięter - zawsze scentrowane w swoim kontenerze */}
              <div className="bg-[#0d1117]/90 backdrop-blur border border-border rounded-lg p-2 flex gap-1 shadow-xl items-center">
-                {/* Usunięto: <span className="text-xs font-medium text-muted-foreground px-2 py-1 flex items-center gap-1">
-                  <Layers className="w-3 h-3"/> Piętro:
-                </span> */}
                 {[-1, 0, 1, 2].map(floor => (
                   <button
                     key={floor}
@@ -193,12 +190,12 @@ export default function App() {
              </div>
 
              <div className="flex items-center justify-between gap-4 text-xs">
-               <span className="text-muted-foreground cursor-pointer" onClick={() => setShowTriangulationLines(!showTriangulationLines)}>Linie triangulacji</span>
+               <span className="text-muted-foreground cursor-pointer" onClick={() => setShowBeacons(!showBeacons)}>Beacony</span>
                <div 
-                 className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${showTriangulationLines ? 'bg-psp-success' : 'bg-muted'}`}
-                 onClick={() => setShowTriangulationLines(!showTriangulationLines)}
+                 className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${showBeacons ? 'bg-psp-success' : 'bg-muted'}`}
+                 onClick={() => setShowBeacons(!showBeacons)}
                >
-                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all ${showTriangulationLines ? 'left-[18px]' : 'left-0.5'}`}></div>
+                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all ${showBeacons ? 'left-[18px]' : 'left-0.5'}`}></div>
                </div>
              </div>
            </div>
@@ -211,9 +208,11 @@ export default function App() {
             beacons={beacons} 
             floor={selectedFloor}
             selectedFirefighterId={selectedFirefighterId}
+            onSelectFirefighter={setSelectedFirefighterId}
             isSidebarOpen={isSidebarOpen}
             showBeaconRanges={showBeaconRanges}
-            showTriangulationLines={showTriangulationLines}
+            showBeacons={showBeacons}
+            history={history}
           />
         </div>
       </main>

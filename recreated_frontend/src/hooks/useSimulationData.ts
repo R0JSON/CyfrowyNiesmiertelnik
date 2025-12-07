@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Telemetry, Beacon, Alert, Building } from '../types';
+import { Telemetry, Beacon, Alert, Building, Position } from '../types';
 
 const WS_URL = 'wss://niesmiertelnik.replit.app/ws';
 
 export function useSimulationData() {
   const [connected, setConnected] = useState(false);
   const [firefighters, setFirefighters] = useState<Map<string, Telemetry>>(new Map());
+  const [history, setHistory] = useState<Map<string, Position[]>>(new Map()); // Nowy stan historii
   const [beacons, setBeacons] = useState<Map<string, Beacon>>(new Map());
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [building, setBuilding] = useState<Building | null>(null);
@@ -75,16 +76,23 @@ export function useSimulationData() {
       case 'tag_telemetry':
         setFirefighters(prev => {
           const newMap = new Map(prev);
-          // Kluczujemy po ID strażaka dla łatwiejszego dostępu
           newMap.set(data.firefighter.id, data); 
           return newMap;
+        });
+        // Aktualizacja historii po stronie klienta
+        setHistory(prev => {
+          const newHistory = new Map(prev);
+          const id = data.firefighter.id;
+          const currentPath = newHistory.get(id) || [];
+          // Dodajemy nowy punkt i trzymamy ostatnie 500
+          newHistory.set(id, [...currentPath, data.position].slice(-500));
+          return newHistory;
         });
         break;
       case 'beacons_status':
         setBeacons(prev => {
           const newMap = new Map(prev);
           data.beacons.forEach((b: Beacon) => {
-            // Aktualizujemy status istniejących beaconów
             const existing = newMap.get(b.id);
             if (existing) {
               newMap.set(b.id, { ...existing, ...b });
@@ -97,7 +105,6 @@ export function useSimulationData() {
         break;
       case 'alert':
         setAlerts(prev => {
-          // Unikaj duplikatów (update jeśli istnieje)
           const index = prev.findIndex(a => a.id === data.id);
           if (index >= 0) {
             const newAlerts = [...prev];
@@ -135,7 +142,8 @@ export function useSimulationData() {
     beacons: Array.from(beacons.values()),
     alerts,
     building,
+    history, // Eksportujemy historię
     sendCommand,
-    resolveAlert, // Eksportujemy nową funkcję
+    resolveAlert,
   };
 }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip, Polyline, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, Polyline, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { Telemetry, Beacon } from '../types';
+import { Telemetry, Beacon, Position } from '../types';
 
 // Ustawienie współrzędnych "Centrum" (Przykładowo Warszawa, żeby pasowało do OSM)
 const CENTER_LAT = 52.2320;
@@ -21,9 +21,11 @@ interface Props {
   beacons: Beacon[];
   floor: number;
   selectedFirefighterId: string | null;
+  onSelectFirefighter: (id: string | null) => void;
   isSidebarOpen: boolean;
   showBeaconRanges: boolean;
-  showTriangulationLines: boolean;
+  showBeacons: boolean;
+  history: Map<string, Position[]>; // Nowy prop
 }
 
 // Komponent pomocniczy do odświeżania rozmiaru mapy
@@ -31,7 +33,6 @@ const MapResizer = ({ isSidebarOpen }: { isSidebarOpen: boolean }) => {
   const map = useMap();
 
   useEffect(() => {
-    // Czekamy na koniec animacji CSS (300ms)
     const timer = setTimeout(() => {
       map.invalidateSize();
     }, 300);
@@ -39,6 +40,17 @@ const MapResizer = ({ isSidebarOpen }: { isSidebarOpen: boolean }) => {
     return () => clearTimeout(timer);
   }, [isSidebarOpen, map]);
 
+  return null;
+};
+
+// Komponent do obsługi kliknięć na mapie (aby odznaczyć strażaka)
+const MapClickHandler = ({ onSelectFirefighter }: { onSelectFirefighter: (id: string | null) => void }) => {
+  useMapEvents({
+    click: () => {
+      // Kliknięcie w tło mapy zawsze odznacza strażaka
+      onSelectFirefighter(null);
+    },
+  });
   return null;
 };
 
@@ -124,7 +136,10 @@ const createBeaconIcon = (type: string, status: string) => {
   });
 };
 
-export function MapControl({ firefighters, beacons, floor, selectedFirefighterId, isSidebarOpen, showBeaconRanges, showTriangulationLines }: Props) {
+export function MapControl({ firefighters, beacons, floor, selectedFirefighterId, onSelectFirefighter, isSidebarOpen, showBeaconRanges, showBeacons, history }: Props) {
+  // Pobieramy historię z propsów
+  const selectedHistory = selectedFirefighterId ? history.get(selectedFirefighterId) || [] : [];
+
   return (
     <MapContainer 
       center={[CENTER_LAT, CENTER_LNG]} 
@@ -133,6 +148,7 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
       zoomControl={false}
     >
       <MapResizer isSidebarOpen={isSidebarOpen} />
+      <MapClickHandler onSelectFirefighter={onSelectFirefighter} />
       
       {/* Monochromatyczna mapa OSM (wymóg z promptu) */}
       <TileLayer
@@ -141,8 +157,23 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
         className="monochromatic-tile-layer"
       />
 
+      {/* Ścieżka historii (tylko dla zaznaczonego strażaka) */}
+      {selectedFirefighterId && selectedHistory.length > 0 && (
+        <Polyline
+          positions={selectedHistory
+            .map(p => metersToLatLng(p.x, p.y))}
+          pathOptions={{ 
+            color: '#f85149', 
+            weight: 3, 
+            opacity: 0.6, 
+            dashArray: '5, 10',
+            lineCap: 'round'
+          }}
+        />
+      )}
+
       {/* Beacony */}
-      {beacons.filter(b => b.floor === floor).map((b) => {
+      {!selectedFirefighterId && showBeacons && beacons.filter(b => b.floor === floor).map((b) => { // Warunkowe renderowanie beaconów: tylko gdy brak zaznaczenia strażaka
         const pos = metersToLatLng(b.position.x, b.position.y);
         
         return (
@@ -174,7 +205,10 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
       })}
 
       {/* Strażacy */}
-      {firefighters.filter(t => t.position.floor === floor).map((t) => {
+      {(selectedFirefighterId 
+        ? firefighters.filter(t => t.firefighter.id === selectedFirefighterId) // Pokaż tylko wybranego strażaka (niezależnie od piętra)
+        : firefighters.filter(t => t.position.floor === floor) // Pokaż wszystkich na wybranym piętrze
+      ).map((t) => {
         const pos = metersToLatLng(t.position.x, t.position.y);
         const rotation = t.heading_deg || 0;
         const initials = t.firefighter.name.split(' ').map((n: string) => n[0]).join('');
@@ -182,10 +216,13 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
         return (
           <>
             {/* Linie triangulacji (tylko dla zaznaczonego) */}
-            {showTriangulationLines && selectedFirefighterId === t.firefighter.id && t.uwb_measurements && (
+            {selectedFirefighterId === t.firefighter.id && t.uwb_measurements && (
                t.uwb_measurements.map((m: any, idx: number) => {
                  const beacon = beacons.find(b => b.id === m.beacon_id);
-                 if (!beacon || beacon.floor !== floor) return null;
+                 // Jeśli zaznaczony, pokaż linie do beaconów niezależnie od piętra (skoro widzimy strażaka)
+                 // Ale beacony są fizycznie na konkretnym piętrze. Triangulacja zazwyczaj działa w obrębie piętra lub +/- 1.
+                 // Pokażmy linię, jeśli beacon istnieje.
+                 if (!beacon) return null;
 
                  const bPos = metersToLatLng(beacon.position.x, beacon.position.y);
                  return (
@@ -201,6 +238,12 @@ export function MapControl({ firefighters, beacons, floor, selectedFirefighterId
             <Marker 
               position={pos} 
               icon={createFirefighterIcon(initials, rotation, selectedFirefighterId === t.firefighter.id)}
+              eventHandlers={{
+                click: (e) => {
+                  L.DomEvent.stopPropagation(e.originalEvent); // Zapobiegaj propagacji do mapy
+                  onSelectFirefighter(selectedFirefighterId === t.firefighter.id ? null : t.firefighter.id);
+                }
+              }}
             >
               <Tooltip direction="top" offset={[0, -22]} opacity={1}>
                  <div className="text-xs min-w-[140px]">
